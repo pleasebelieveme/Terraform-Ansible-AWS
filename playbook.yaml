@@ -1,0 +1,39 @@
+---
+# 이 Ansible 플레이북은 AWS EC2 인스턴스를 관리하는 간단한 작업을 보여주기 위해 디자인되었습니다.
+# SSH 키 복사, 인스턴스에 연결, Nginx 설치 및 Nginx가 실행 중인지 확인하는 작업을 다룹니다.
+
+# 플레이북의 주요 설정 정의
+- name: AWS EC2 인스턴스에 접속
+  hosts: all  # 인벤토리 파일에서 지정된 모든 호스트를 대상으로 설정
+  become: true  # 작업을 슈퍼 유저 권한으로 실행
+  remote_user: ec2-user  # EC2 인스턴스에 'ec2-user'로 연결
+  gather_facts: false  # 호스트에 대한 정보 수집 비활성화
+
+  # 호스트 키 확인 프롬프트를 피하기 위해 공통 SSH 옵션 설정
+  vars:
+    ansible_ssh_common_args: '-o StrictHostKeyChecking=no'
+    
+  # 대상 호스트에서 실행될 작업 목록
+  tasks:
+    # 작업 1: 로컬 머신에서 EC2 인스턴스로 SSH 키 복사
+    - name: SSH 키 복사
+      ansible.builtin.copy:
+        src: "/home/bm/.ssh/devops.pem"
+        dest: "/home/ec2-user/.ssh/devops.pem"
+        mode: "0400"  # 복사된 키 파일의 적절한 권한 설정
+
+    # 작업 2: EC2 인스턴스에 연결하고 간단한 셸 명령 실행
+    - name: EC2 인스턴스로 SSH
+      ansible.builtin.shell: "echo 'Hello, Ansible!'"
+
+    # 작업 3: yum 패키지 관리자를 사용하여 EC2 인스턴스에 Nginx 설치
+    - name: Nginx 설치
+      ansible.builtin.yum:
+        name: nginx
+        state: present  # Nginx가 시스템에 존재하는지 확인
+
+    # 작업 4: Nginx가 실행 중인지 systemd 서비스를 통해 확인
+    - name: Nginx 실행 확인
+      systemd:
+        state: started  # Nginx 서비스가 시작되었는지 확인
+        name: nginx  # 서비스 이름을 'nginx'로 지정
